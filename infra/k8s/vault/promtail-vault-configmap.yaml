@@ -1,0 +1,71 @@
+---
+# infra/k8s/vault/promtail-vault-configmap.yaml
+# Promtail sidecar config for shipping Vault audit logs to Loki.
+# Mounted as /etc/promtail/config.yaml inside the promtail-sidecar container.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: promtail-vault-config
+  namespace: vault
+  labels:
+    app.kubernetes.io/component: vault-audit
+    app.kubernetes.io/part-of: contextmesh
+data:
+  config.yaml: |
+    server:
+      http_listen_port: 9080
+      grpc_listen_port: 0
+      log_level: warn
+
+    positions:
+      filename: /tmp/positions.yaml
+
+    clients:
+      - url: http://loki.monitoring.svc:3100/loki/api/v1/push
+        tenant_id: contextmesh
+        batchwait: 1s
+        batchsize: 1048576
+        timeout: 10s
+        backoff_config:
+          min_period: 500ms
+          max_period: 5m
+          max_retries: 10
+
+    scrape_configs:
+      - job_name: vault-audit
+        static_configs:
+          - targets:
+              - localhost
+            labels:
+              job: vault-audit
+              namespace: vault
+              component: vault-server
+              __path__: /vault/audit/vault-audit.log
+
+        pipeline_stages:
+          # Vault audit log lines are JSON
+          - json:
+              expressions:
+                time: time
+                type: type
+                auth_display_name: auth.display_name
+                auth_policies: auth.policies
+                request_path: request.path
+                request_operation: request.operation
+                response_secret_path: response.data.path
+                error: error
+
+          - labels:
+              type:
+              auth_display_name:
+              request_operation:
+
+          # Promote timestamp from the log line itself
+          - timestamp:
+              source: time
+              format: RFC3339Nano
+
+          # Drop health-check noise
+          - drop:
+              expression: '.*sys/health.*'
+              drop_counter_reason: vault_health_check_noise

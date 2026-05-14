@@ -4,6 +4,12 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+vault-backup/
+*.gpg
+*.key
+*.pem
+.env
+.env.*
 .venv/
 venv/
 .mypy_cache/
