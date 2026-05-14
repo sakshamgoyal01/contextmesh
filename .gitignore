@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Secrets — NEVER commit these
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+kubeconfig
+kubeconfig-*
+!kubeconfig.example
+.env
+.env.*
+!.env.example
+*.vault-token
+.vault-token
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+.terraform.lock.hcl
+
+# Node / Frontend
+node_modules/
+.next/
+*.tsbuildinfo
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Logs
+*.log
+tmp/
+temp/
