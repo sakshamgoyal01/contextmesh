@@ -1,0 +1,95 @@
+repos:
+  # ── Secrets first — fail_fast means these run before anything else ──────────
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.0
+    hooks:
+      - id: gitleaks
+        name: "gitleaks: detect hardcoded secrets"
+
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: ^\.pre-commit-config\.yaml$
+  # ── General hygiene ─────────────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: ["--unsafe"]
+      - id: check-json
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+      - id: no-commit-to-branch
+        args: ["--branch=master"]
+
+  # ── Python formatting ────────────────────────────────────────────────────────
+  - repo: https://github.com/psf/black
+    rev: 26.3.1
+    hooks:
+      - id: black
+        language_version: python3.12
+        args: ["--config=pyproject.toml"]
+
+  # ── Python linting ───────────────────────────────────────────────────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.12
+    hooks:
+      - id: ruff
+        args: ["--fix", "--exit-non-zero-on-fix", "--config=pyproject.toml"]
+
+  # ── Python type checking ─────────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v2.1.0
+    hooks:
+      - id: mypy
+        args: ["--config-file=pyproject.toml"]
+        pass_filenames: false
+        entry: mypy services agents api shared --config-file=pyproject.toml
+        additional_dependencies:
+          - pydantic>=2.7
+          - types-redis
+          - types-requests
+
+  # ── Dockerfile linting ───────────────────────────────────────────────────────
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.14.0
+    hooks:
+      - id: hadolint-docker
+        name: "hadolint: lint Dockerfiles"
+
+  # ── YAML linting ─────────────────────────────────────────────────────────────
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.38.0
+    hooks:
+      - id: yamllint
+        args: ["--config-file=.yamllint.yml"]
+
+  # ── Shell scripts ────────────────────────────────────────────────────────────
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
+        args: ["--severity=warning"]
+
+  # ── Commit message format ────────────────────────────────────────────────────
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.4.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args: [feat, fix, docs, style, refactor, test, chore, ci, infra, sec]
+
+default_language_version:
+  python: python3.12
+
+default_stages: [pre-commit]
+
+fail_fast: true

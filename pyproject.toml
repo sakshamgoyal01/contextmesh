@@ -1,0 +1,70 @@
+[tool.black]
+line-length    = 100
+target-version = ["py312"]
+
+[tool.ruff]
+line-length    = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # bugbear
+    "S",    # bandit (security)
+    "T20",  # no print statements
+    "ANN",  # type annotations required
+    "UP",   # pyupgrade
+    "RUF",  # ruff-specific
+]
+ignore = [
+    "ANN101",  # self annotation not required
+    "ANN102",  # cls annotation not required
+    "B008",    # FastAPI Depends() in default args — allowed
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S", "ANN", "T20"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["shared", "src"]
+
+[tool.mypy]
+python_version        = "3.12"
+strict                = true
+disallow_untyped_defs = true
+warn_return_any       = true
+no_implicit_reexport  = true
+show_error_codes      = true
+exclude               = ["tests/", ".venv/"]
+
+[[tool.mypy.overrides]]
+module = [
+    "confluent_kafka.*",
+    "fastavro.*",
+    "hvac.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode  = "auto"
+testpaths     = ["tests"]
+python_files  = ["test_*.py"]
+addopts       = ["--strict-markers", "--tb=short", "-v"]
+markers = [
+    "unit: no external I/O",
+    "integration: requires Kafka/DB/Vault",
+    "e2e: full stack",
+    "chaos: chaos scenarios",
+    "eval: LLM agent evaluation",
+]
+
+[tool.coverage.run]
+source = ["services", "agents", "api", "shared"]
+branch = true
+
+[tool.coverage.report]
+fail_under   = 80
+show_missing = true

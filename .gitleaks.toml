@@ -1,0 +1,48 @@
+title = "ContextMesh gitleaks config"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id          = "vault-token"
+description = "HashiCorp Vault token"
+regex       = '''(?i)(vault[_-]?token|VAULT_TOKEN)\s*[=:]\s*['\"]?([a-z0-9._-]{20,})['\"]?'''
+tags        = ["vault", "secret"]
+
+[[rules]]
+id          = "kafka-sasl-password"
+description = "Kafka SASL password"
+regex       = '''(?i)(sasl[._]?password|kafka[._]?password)\s*[=:]\s*['\"]?([^\s'\"]{8,})['\"]?'''
+tags        = ["kafka", "secret"]
+
+[[rules]]
+id          = "postgres-dsn"
+description = "PostgreSQL DSN with credentials"
+regex       = '''postgres(?:ql)?://[^:]+:[^@\s]{3,}@'''
+tags        = ["postgres", "secret"]
+
+[[rules]]
+id          = "openai-api-key"
+description = "OpenAI API key"
+regex       = '''sk-[a-zA-Z0-9]{48}'''
+tags        = ["openai", "secret"]
+
+[[rules]]
+id          = "jwt-private-key"
+description = "RSA private key for JWT RS256"
+regex       = '''-----BEGIN (?:RSA )?PRIVATE KEY-----'''
+tags        = ["jwt", "secret"]
+
+[allowlist]
+paths = [
+  '''\.secrets\.baseline$''',
+  '''docs/.*''',
+  '''tests/fixtures/.*''',
+  '''.*\.example$''',
+]
+regexes = [
+  '''EXAMPLE_.*_TOKEN''',
+  '''your-.*-here''',
+  '''<REPLACE_ME>''',
+  '''placeholder''',
+]
