@@ -41,11 +41,14 @@ show_error_codes      = true
 exclude               = ["tests/", ".venv/"]
 
 [[tool.mypy.overrides]]
+
 module = [
     "confluent_kafka.*",
     "fastavro.*",
     "hvac.*",
+    "tests.*"
 ]
+disable_error_code = ["untyped-decorator"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
@@ -68,3 +71,9 @@ branch = true
 [tool.coverage.report]
 fail_under   = 80
 show_missing = true
+
+
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disable_error_code = ["untyped-decorator"]

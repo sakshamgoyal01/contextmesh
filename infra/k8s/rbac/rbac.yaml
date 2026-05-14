@@ -1,0 +1,520 @@
+---
+# ============================================================
+# contextmesh-ingestion — crawler ServiceAccounts + RBAC
+# ============================================================
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: crawler-k8s
+  namespace: contextmesh-ingestion
+  labels:
+    app.kubernetes.io/component: crawler-k8s
+    app.kubernetes.io/part-of: contextmesh
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: crawler-iam
+  namespace: contextmesh-ingestion
+  labels:
+    app.kubernetes.io/component: crawler-iam
+    app.kubernetes.io/part-of: contextmesh
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: crawler-cicd
+  namespace: contextmesh-ingestion
+  labels:
+    app.kubernetes.io/component: crawler-cicd
+    app.kubernetes.io/part-of: contextmesh
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: crawler-secrets
+  namespace: contextmesh-ingestion
+  labels:
+    app.kubernetes.io/component: crawler-secrets
+    app.kubernetes.io/part-of: contextmesh
+automountServiceAccountToken: false
+
+---
+# crawler-k8s needs cluster-wide read on core infra resources
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: contextmesh:crawler-k8s
+  labels:
+    app.kubernetes.io/part-of: contextmesh
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "serviceaccounts", "namespaces", "configmaps", "persistentvolumeclaims"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets", "statefulsets", "daemonsets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies", "ingresses"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["batch"]
+  resources: ["jobs", "cronjobs"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: contextmesh:crawler-k8s
+  labels:
+    app.kubernetes.io/part-of: contextmesh
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: contextmesh:crawler-k8s
+subjects:
+- kind: ServiceAccount
+  name: crawler-k8s
+  namespace: contextmesh-ingestion
+
+---
+# crawler-iam: no K8s API access — uses AWS SDK, no ClusterRole needed
+# Namespace-scoped role only for own config/secrets
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: crawler-iam
+  namespace: contextmesh-ingestion
+  labels:
+    app.kubernetes.io/part-of: contextmesh
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: ["crawler-iam-config"]
+  verbs: ["get", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: crawler-iam
+  namespace: contextmesh-ingestion
+  labels:
+    app.kubernetes.io/part-of: contextmesh
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: crawler-iam
+subjects:
+- kind: ServiceAccount
+  name: crawler-iam
+  namespace: contextmesh-ingestion
+
+---
+# crawler-cicd: receives webhooks, reads own configmap
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: crawler-cicd
+  namespace: contextmesh-ingestion
+  labels:
+    app.kubernetes.io/part-of: contextmesh
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: ["crawler-cicd-config"]
+  verbs: ["get", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: crawler-cicd
+  namespace: contextmesh-ingestion
+  labels:
+    app.kubernetes.io/part-of: contextmesh
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: crawler-cicd
+subjects:
+- kind: ServiceAccount
+  name: crawler-cicd
+  namespace: contextmesh-ingestion
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: crawler-secrets
+  namespace: contextmesh-ingestion
+  labels:
+    app.kubernetes.io/part-of: contextmesh
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: ["crawler-secrets-config"]
+  verbs: ["get", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: crawler-secrets
+  namespace: contextmesh-ingestion
+  labels:
+    app.kubernetes.io/part-of: contextmesh
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: crawler-secrets
+subjects:
+- kind: ServiceAccount
+  name: crawler-secrets
+  namespace: contextmesh-ingestion
+
+---
+# ============================================================
+# contextmesh-graph — graph-consumer, trust-scorer, drift-detector
+# ============================================================
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: graph-consumer
+  namespace: contextmesh-graph
+  labels:
+    app.kubernetes.io/component: graph-consumer
+    app.kubernetes.io/part-of: contextmesh
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: trust-scorer
+  namespace: contextmesh-graph
+  labels:
+    app.kubernetes.io/component: trust-scorer
+    app.kubernetes.io/part-of: contextmesh
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: drift-detector
+  namespace: contextmesh-graph
+  labels:
+    app.kubernetes.io/component: drift-detector
+    app.kubernetes.io/part-of: contextmesh
+automountServiceAccountToken: false
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: graph-consumer
+  namespace: contextmesh-graph
+  labels:
+    app.kubernetes.io/part-of: contextmesh
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: ["graph-consumer-config"]
+  verbs: ["get", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: graph-consumer
+  namespace: contextmesh-graph
+  labels:
+    app.kubernetes.io/part-of: contextmesh
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: graph-consumer
+subjects:
+- kind: ServiceAccount
+  name: graph-consumer
+  namespace: contextmesh-graph
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: trust-scorer
+  namespace: contextmesh-graph
+  labels:
+    app.kubernetes.io/part-of: contextmesh
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: ["trust-scorer-config"]
+  verbs: ["get", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: trust-scorer
+  namespace: contextmesh-graph
+  labels:
+    app.kubernetes.io/part-of: contextmesh
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: trust-scorer
+subjects:
+- kind: ServiceAccount
+  name: trust-scorer
+  namespace: contextmesh-graph
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: drift-detector
+  namespace: contextmesh-graph
+  labels:
+    app.kubernetes.io/part-of: contextmesh
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: ["drift-detector-config"]
+  verbs: ["get", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: drift-detector
+  namespace: contextmesh-graph
+  labels:
+    app.kubernetes.io/part-of: contextmesh
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: drift-detector
+subjects:
+- kind: ServiceAccount
+  name: drift-detector
+  namespace: contextmesh-graph
+
+---
+# ============================================================
+# contextmesh-agents
+# ============================================================
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: context-agent
+  namespace: contextmesh-agents
+  labels:
+    app.kubernetes.io/component: context-agent
+    app.kubernetes.io/part-of: contextmesh
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: drift-agent
+  namespace: contextmesh-agents
+  labels:
+    app.kubernetes.io/component: drift-agent
+    app.kubernetes.io/part-of: contextmesh
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: remediation-agent
+  namespace: contextmesh-agents
+  labels:
+    app.kubernetes.io/component: remediation-agent
+    app.kubernetes.io/part-of: contextmesh
+automountServiceAccountToken: false
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: context-agent
+  namespace: contextmesh-agents
+  labels:
+    app.kubernetes.io/part-of: contextmesh
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: ["context-agent-config"]
+  verbs: ["get", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: context-agent
+  namespace: contextmesh-agents
+  labels:
+    app.kubernetes.io/part-of: contextmesh
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: context-agent
+subjects:
+- kind: ServiceAccount
+  name: context-agent
+  namespace: contextmesh-agents
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: drift-agent
+  namespace: contextmesh-agents
+  labels:
+    app.kubernetes.io/part-of: contextmesh
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: ["drift-agent-config"]
+  verbs: ["get", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: drift-agent
+  namespace: contextmesh-agents
+  labels:
+    app.kubernetes.io/part-of: contextmesh
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: drift-agent
+subjects:
+- kind: ServiceAccount
+  name: drift-agent
+  namespace: contextmesh-agents
+
+---
+# remediation-agent needs to read resources to generate patches — still read-only on K8s
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: contextmesh:remediation-agent
+  labels:
+    app.kubernetes.io/part-of: contextmesh
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "serviceaccounts", "configmaps"]
+  verbs: ["get", "list"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "statefulsets"]
+  verbs: ["get", "list"]
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: contextmesh:remediation-agent
+  labels:
+    app.kubernetes.io/part-of: contextmesh
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: contextmesh:remediation-agent
+subjects:
+- kind: ServiceAccount
+  name: remediation-agent
+  namespace: contextmesh-agents
+
+---
+# ============================================================
+# contextmesh-api
+# ============================================================
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: trust-api
+  namespace: contextmesh-api
+  labels:
+    app.kubernetes.io/component: trust-api
+    app.kubernetes.io/part-of: contextmesh
+automountServiceAccountToken: false
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: trust-api
+  namespace: contextmesh-api
+  labels:
+    app.kubernetes.io/part-of: contextmesh
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: ["trust-api-config"]
+  verbs: ["get", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: trust-api
+  namespace: contextmesh-api
+  labels:
+    app.kubernetes.io/part-of: contextmesh
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: trust-api
+subjects:
+- kind: ServiceAccount
+  name: trust-api
+  namespace: contextmesh-api
+
+---
+# ============================================================
+# contextmesh-system — ArgoCD application controller needs
+# broader read for GitOps sync status checks
+# ============================================================
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argocd-app-watcher
+  namespace: contextmesh-system
+  labels:
+    app.kubernetes.io/component: argocd-app-watcher
+    app.kubernetes.io/part-of: contextmesh
+automountServiceAccountToken: false
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: contextmesh:argocd-app-watcher
+  labels:
+    app.kubernetes.io/part-of: contextmesh
+rules:
+- apiGroups: ["argoproj.io"]
+  resources: ["applications", "appprojects"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: contextmesh:argocd-app-watcher
+  labels:
+    app.kubernetes.io/part-of: contextmesh
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: contextmesh:argocd-app-watcher
+subjects:
+- kind: ServiceAccount
+  name: argocd-app-watcher
+  namespace: contextmesh-system

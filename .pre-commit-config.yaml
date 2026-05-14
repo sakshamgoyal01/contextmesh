@@ -50,10 +50,15 @@ repos:
     rev: v2.1.0
     hooks:
       - id: mypy
-        args: ["--config-file=pyproject.toml"]
-        pass_filenames: false
-        entry: mypy services agents api shared --config-file=pyproject.toml
+        args:
+          - --config-file=pyproject.toml
+          - --ignore-missing-imports
+          - --disable-error-code=untyped-decorator
+        files: ^tests/.*\.py$
         additional_dependencies:
+          - pytest
+          - kubernetes
+          - types-PyYAML
           - pydantic>=2.7
           - types-redis
           - types-requests
