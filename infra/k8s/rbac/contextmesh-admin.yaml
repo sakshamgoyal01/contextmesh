@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: contextmesh-admin
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: contextmesh-admin
+rules:
+  # Read cluster topology
+  - apiGroups: [""]
+    resources: ["nodes", "namespaces", "persistentvolumes"]
+    verbs: ["get", "list", "watch"]
+  # Full access to contextmesh namespaces
+  - apiGroups: ["", "apps", "batch"]
+    resources: ["pods", "pods/log", "services", "endpoints",
+                "configmaps", "serviceaccounts", "events",
+                "deployments", "statefulsets", "daemonsets",
+                "jobs", "cronjobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Networking
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses", "networkpolicies"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # ArgoCD applications
+  - apiGroups: ["argoproj.io"]
+    resources: ["applications", "appprojects"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # OPA Gatekeeper — read only, write via ArgoCD
+  - apiGroups: ["constraints.gatekeeper.sh", "templates.gatekeeper.sh"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+  # RBAC — manage roles inside contextmesh namespaces
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles", "rolebindings"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # RBAC — read cluster roles, never write
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["clusterroles", "clusterrolebindings"]
+    verbs: ["get", "list", "watch"]
+  # Metrics
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods", "nodes"]
+    verbs: ["get", "list"]
+  # cert-manager
+  - apiGroups: ["cert-manager.io"]
+    resources: ["certificates", "issuers", "clusterissuers"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: contextmesh-admin
+subjects:
+  - kind: ServiceAccount
+    name: contextmesh-admin
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: contextmesh-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: contextmesh-admin-token
+  namespace: kube-system
+  annotations:
+    kubernetes.io/service-account.name: contextmesh-admin
+type: kubernetes.io/service-account-token
